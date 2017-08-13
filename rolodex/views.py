@@ -137,7 +137,7 @@ def search_org(request, org_slug):
 	node.tags = node.tags.all()
 	tags = Tag.objects.all()
 	if isDjango18:
-		return render(request, 'rolodex/org.html', {'node': node, 'tags': tags, }, context_instance=RequestContext(request))
+		return render(request, 'rolodex/org.html', {'node': node, 'tags': tags, })
 	else:
 		return render_to_response('rolodex/org.html', {'node': node, 'tags': tags, }, context_instance=RequestContext(request))
 
