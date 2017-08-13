@@ -1,3 +1,5 @@
+from __future__ import unicode_literals
+from django.utils.encoding import python_2_unicode_compatible
 from django.db import models
 from itertools import chain
 from django.core.exceptions import ValidationError
@@ -11,11 +13,11 @@ from taggit.managers import TaggableManager
 
 
 class GetOrNoneManager(models.Manager):
-    def get_or_none(self, **kwargs):
-        try:
-            return self.get(**kwargs)
-        except self.model.DoesNotExist:
-            return None
+	def get_or_none(self, **kwargs):
+		try:
+			return self.get(**kwargs)
+		except self.model.DoesNotExist:
+			return None
 
 
 #################
@@ -27,6 +29,7 @@ Choice models are registered in the admin and are designed to be set by user pri
 '''
 
 
+@python_2_unicode_compatible
 class OpenRecordsLaw(models.Model):
 	'''
 	Which open records law applies to the org.
@@ -35,7 +38,7 @@ class OpenRecordsLaw(models.Model):
 	name = models.CharField(max_length=250)
 	link = models.URLField(blank=True, null=True)
 
-	def __unicode__(self):
+	def __str__(self):
 		return self.name
 
 	def save(self, *args, **kwargs):
@@ -43,6 +46,7 @@ class OpenRecordsLaw(models.Model):
 		super(OpenRecordsLaw, self).save(*args, **kwargs)
 
 
+@python_2_unicode_compatible
 class PersonRole(models.Model):
 	'''
 	Define some roles, preferably ones useful for filtering on, e.g. "Media Contact", "FOIA Officer".
@@ -51,7 +55,7 @@ class PersonRole(models.Model):
 	role = models.CharField(max_length=250)
 	description = models.TextField(blank=True, null=True)
 
-	def __unicode__(self):
+	def __str__(self):
 		return self.role
 
 	def save(self, *args, **kwargs):
@@ -59,6 +63,7 @@ class PersonRole(models.Model):
 		super(PersonRole, self).save(*args, **kwargs)
 
 
+@python_2_unicode_compatible
 class OrgContactRole(models.Model):
 	'''
 	Define roles for org contacts, e.g., FOIA email, etc.
@@ -67,7 +72,7 @@ class OrgContactRole(models.Model):
 	role = models.CharField(max_length=250)
 	description = models.TextField(blank=True, null=True)
 
-	def __unicode__(self):
+	def __str__(self):
 		return self.role
 
 	def save(self, *args, **kwargs):
@@ -78,13 +83,13 @@ class OrgContactRole(models.Model):
 Relationship types
 '''
 
-
+@python_2_unicode_compatible
 class P2P_Type(models.Model):
 	slug = models.SlugField(unique=True, editable=False)
 	relationship_type = models.CharField(max_length=250)
 	objects = GetOrNoneManager()
 
-	def __unicode__(self):
+	def __str__(self):
 		return self.relationship_type
 
 	def save(self, *args, **kwargs):
@@ -92,12 +97,13 @@ class P2P_Type(models.Model):
 		super(P2P_Type, self).save(*args, **kwargs)
 
 
+@python_2_unicode_compatible
 class Org2Org_Type(models.Model):
 	slug = models.SlugField(unique=True, editable=False)
 	relationship_type = models.CharField(max_length=250)
 	objects = GetOrNoneManager()
 
-	def __unicode__(self):
+	def __str__(self):
 		return self.relationship_type
 
 	def save(self, *args, **kwargs):
@@ -105,12 +111,13 @@ class Org2Org_Type(models.Model):
 		super(Org2Org_Type, self).save(*args, **kwargs)
 
 
+@python_2_unicode_compatible
 class P2Org_Type(models.Model):
 	slug = models.SlugField(unique=True, editable=False)
 	relationship_type = models.CharField(max_length=250)
 	objects = GetOrNoneManager()
 
-	def __unicode__(self):
+	def __str__(self):
 		return self.relationship_type
 
 	def save(self, *args, **kwargs):
@@ -119,7 +126,7 @@ class P2Org_Type(models.Model):
 
 
 #################
-#   Documents   #
+#	Documents	#
 #################
 
 def upload_doc_directory(self, filename):
@@ -153,6 +160,7 @@ class Document(models.Model):
 contact_types = (('email', 'email'), ('phone', 'phone'), ('link', 'link'), ('address', 'address'))
 
 
+@python_2_unicode_compatible
 class Contact(models.Model):
 	'''
 	A contact record for persons or orgs.
@@ -181,7 +189,7 @@ class Contact(models.Model):
 		else:
 			pass
 
-	def __unicode__(self):
+	def __str__(self):
 		if self.person:
 			return self.person.lastName + ", " + self.person.firstName + ": " + self.type
 		else:
@@ -197,6 +205,7 @@ race_types = (('White', 'White'), ('Black', 'Black'), ('American Indian', 'Ameri
 ethnicity_types = (('Hispanic', 'Hispanic'), ('Non-Hispanic', 'Non-Hispanic'),)
 
 
+@python_2_unicode_compatible
 class Person(models.Model):
 	slug = models.SlugField(unique=True, editable=False)
 	lastName = models.CharField(max_length=100)
@@ -219,7 +228,7 @@ class Person(models.Model):
 
 	tags = TaggableManager()
 
-	def __unicode__(self):
+	def __str__(self):
 		return self.lastName + ", " + self.firstName
 
 	def save(self, *args, **kwargs):
@@ -227,6 +236,7 @@ class Person(models.Model):
 		super(Person, self).save(*args, **kwargs)
 
 
+@python_2_unicode_compatible
 class Org(models.Model):
 	slug = models.SlugField(unique=True, editable=False)
 	orgName = models.CharField(max_length=200)
@@ -241,7 +251,7 @@ class Org(models.Model):
 
 	tags = TaggableManager()
 
-	def __unicode__(self):
+	def __str__(self):
 		return self.orgName
 
 	def save(self, *args, **kwargs):
@@ -250,7 +260,7 @@ class Org(models.Model):
 
 
 #################
-#   Search Log  #
+#	Search Log	#
 #################
 
 class SearchLog(models.Model):
@@ -270,6 +280,7 @@ class SearchLog(models.Model):
 # Relationships #
 #################
 
+@python_2_unicode_compatible
 class P2P(models.Model):
 	from_ent = models.ForeignKey(Person, related_name='p_from_p')
 	to_ent = models.ForeignKey(Person, related_name='p_to_p')
@@ -284,7 +295,7 @@ class P2P(models.Model):
 			raise ValidationError(_('That relationship already exists.'), code='already_exists')
 		super(P2P, self).clean()
 
-	def __unicode__(self):
+	def __str__(self):
 		return self.from_ent.lastName + " ... " + self.to_ent.lastName
 	'''
 	Override save and delete methods to maintain relationship symmetry.
@@ -335,6 +346,7 @@ def hierarchy_test(self):
 hierarchy_types = (('parent', 'parent'), ('child', 'child'), ('none', 'none'))
 
 
+@python_2_unicode_compatible
 class Org2Org(models.Model):
 	from_ent = models.ForeignKey(Org, related_name='org_from_org')
 	to_ent = models.ForeignKey(Org, related_name='org_to_org')
@@ -345,7 +357,7 @@ class Org2Org(models.Model):
 	hierarchy = models.CharField(choices=hierarchy_types, default='none', max_length=10)
 	objects = GetOrNoneManager()
 
-	def __unicode__(self):
+	def __str__(self):
 		return self.from_ent.orgName + " ... " + self.to_ent.orgName
 
 	def clean(self):
@@ -382,6 +394,7 @@ class Org2Org(models.Model):
 			relation.delete()
 
 
+@python_2_unicode_compatible
 class P2Org(models.Model):
 	from_ent = models.ForeignKey(Person, related_name='org_from_p')
 	to_ent = models.ForeignKey(Org, related_name='p_to_org')
@@ -391,7 +404,7 @@ class P2Org(models.Model):
 	description = models.TextField(blank=True, null=True)
 	objects = GetOrNoneManager()
 
-	def __unicode__(self):
+	def __str__(self):
 		return self.from_ent.lastName + " ... " + self.to_ent.orgName
 
 	def clean(self):
@@ -424,6 +437,7 @@ class P2Org(models.Model):
 			relation.delete()
 
 
+@python_2_unicode_compatible
 class Org2P(models.Model):
 	from_ent = models.ForeignKey(Org, related_name='p_from_org')
 	to_ent = models.ForeignKey(Person, related_name='org_to_p')
@@ -433,7 +447,7 @@ class Org2P(models.Model):
 	description = models.TextField(blank=True, null=True)
 	objects = GetOrNoneManager()
 
-	def __unicode__(self):
+	def __str__(self):
 		return self.from_ent.orgName + " ... " + self.to_ent.lastName
 
 	def clean(self):
@@ -577,7 +591,7 @@ def get_relations_by_type(self, type):
 		kith = self.p_to_org.filter(relation__relationship_type=type)
 		kin = self.org_to_org.filter(relation__relationship_type=type)
 		return {'people': collate_relations(kith), 'orgs': collate_relations(kin)}
-	else:  # =='person'
+	else:	 # =='person'
 		kith = self.org_to_p.filter(relation__relationship_type=type)
 		kin = self.p_to_p.filter(relation__relationship_type=type)
 		return {'orgs': collate_relations(kith), 'people': collate_relations(kin)}
@@ -588,7 +602,7 @@ def get_relations_with_type(self):
 		kith = self.p_to_org.all().order_by('id')
 		kin = self.org_to_org.all().order_by('id')
 		return {'people': collate_relations(kith), 'orgs': collate_relations(kin)}
-	else:  # =='person'
+	else:	 # =='person'
 		kith = self.org_to_p.all().order_by('id')
 		kin = self.p_to_p.all().order_by('id')
 		return {'orgs': collate_relations(kith), 'people': collate_relations(kin)}
