@@ -34,7 +34,7 @@ def secure(view):
 	'''
 	Simple decorator that checks SETTINGS.
 	'''
-	if settings.ROLODEX_SECURE:
+	if getattr(settings, "ROLODEX_SECURE", False):
 		return login_required(view)
 	else:
 		return view
