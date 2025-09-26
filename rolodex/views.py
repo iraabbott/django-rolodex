@@ -1,15 +1,15 @@
 from django.contrib.auth.decorators import login_required, permission_required
-from django.shortcuts import redirect, render_to_response
-from django.template import RequestContext
+from django.shortcuts import redirect, render
 from django.http import HttpResponse, JsonResponse
 from django.db.models import Q
 from django.db import connection
 from django.conf import settings
-from django.core.urlresolvers import reverse
+from django.urls import reverse
 from django.views.decorators.csrf import csrf_exempt
 from rolodex.models import Org, Person, Org2Org, P2Org_Type, P2P_Type, Org2Org_Type, SearchLog, Document
 from rolodex.forms import OrgForm, OrgFormSet, PersonForm, PersonFormSet, P2PForm, Org2OrgForm, P2OrgForm, Org2PForm, DocumentForm
 from datetime import date, timedelta
+from functools import reduce
 from itertools import chain
 import json
 from taggit.models import Tag
@@ -42,7 +42,7 @@ def secure(view):
 
 @secure
 def home(request):
-	return render_to_response('rolodex/home.html', {}, context_instance=RequestContext(request))
+	return render(request, 'rolodex/home.html', {})
 
 
 ############################################################################
@@ -66,7 +66,7 @@ def new_org(request):
 			else:
 				org.delete()
 				form = OrgForm(request.POST)
-	return render_to_response('rolodex/new_org.html', {'form': form, 'formset': formset, }, context_instance=RequestContext(request))
+	return render(request, 'rolodex/new_org.html', {'form': form, 'formset': formset, })
 
 
 @secure
@@ -86,7 +86,7 @@ def edit_org(request, org_slug):
 				org_node.save()
 				return redirect('rolodex_org', org.slug)
 
-	return render_to_response('rolodex/new_org.html', {'form': form, 'formset': formset, 'orgNode': org_node, 'edit': True}, context_instance=RequestContext(request))
+	return render(request, 'rolodex/new_org.html', {'form': form, 'formset': formset, 'orgNode': org_node, 'edit': True})
 
 
 @permission_required('rolodex.delete_org')
@@ -95,7 +95,7 @@ def delete_org(request, org_slug):
 	if request.method == "POST":
 		org.delete()
 		return redirect('rolodex_home')
-	return render_to_response('rolodex/delete.html', {'org': org}, context_instance=RequestContext(request))
+	return render(request, 'rolodex/delete.html', {'org': org})
 
 
 @secure
@@ -113,14 +113,14 @@ def search_org(request, org_slug):
 	node.documents = Document.objects.filter(org=node)
 	node.tags = node.tags.all()
 	tags = Tag.objects.all()
-	return render_to_response('rolodex/org.html', {'node': node, 'tags': tags, }, context_instance=RequestContext(request))
+	return render(request, 'rolodex/org.html', {'node': node, 'tags': tags, })
 
 
 @secure
 def org_map(request, org_slug):
 	node = Org.objects.get(slug=org_slug)
 	hops = int(request.GET.get('hops', 3))
-	return render_to_response('rolodex/orgMap.html', {'node': node, 'hops': hops}, context_instance=RequestContext(request))
+	return render(request, 'rolodex/orgMap.html', {'node': node, 'hops': hops})
 
 
 @secure
@@ -164,7 +164,7 @@ def new_org_relation(request, org_slug):
 				from_ent.add_org2org(to_ent, **{'relation': relation, 'hierarchy': hierarchy})
 				saved = True
 	org_node = Org.objects.get(slug=org_slug)
-	return render_to_response('rolodex/new_relation.html', {'orgNode': org_node, 'pForm': org2p_form, 'orgForm': org2org_form, 'saved': saved}, context_instance=RequestContext(request))
+	return render(request, 'rolodex/new_relation.html', {'orgNode': org_node, 'pForm': org2p_form, 'orgForm': org2org_form, 'saved': saved})
 
 
 @secure
@@ -179,7 +179,7 @@ def new_org_doc(request, org_slug=None):
 	else:
 		node = Org.objects.get(slug=org_slug)
 		doc_form = DocumentForm(initial={'org': node})
-	return render_to_response('rolodex/new_doc.html', {'node': node, 'entity': 'org', 'docForm': doc_form}, context_instance=RequestContext(request))
+	return render(request, 'rolodex/new_doc.html', {'node': node, 'entity': 'org', 'docForm': doc_form})
 
 
 ############################################################################
@@ -213,7 +213,7 @@ def new_person(request, org_slug=None):
 				form = PersonForm(request.POST)
 
 	primary = Org.objects.get(slug=org_slug)
-	return render_to_response('rolodex/new_person.html', {'form': form, 'formset': formset, 'orgNode': org_slug, 'primary': primary, 'success': success}, context_instance=RequestContext(request))
+	return render(request, 'rolodex/new_person.html', {'form': form, 'formset': formset, 'orgNode': org_slug, 'primary': primary, 'success': success})
 
 
 @secure
@@ -238,7 +238,7 @@ def new_person_no_org(request, org_slug=None):
 			else:
 				person.delete()
 				form = PersonForm(request.POST)
-	return render_to_response('rolodex/new_person.html', {'form': form, 'formset': formset, 'orgNode': org_slug, 'primary': None, 'success': success}, context_instance=RequestContext(request))
+	return render(request, 'rolodex/new_person.html', {'form': form, 'formset': formset, 'orgNode': org_slug, 'primary': None, 'success': success})
 
 
 @secure
@@ -264,7 +264,7 @@ def edit_person(request, person_slug):
 		primary = employer[0].to_ent
 	else:
 		primary = "N/A"
-	return render_to_response('rolodex/new_person.html', {'form': form, 'formset': formset, 'personNode': peep, 'primary': primary, 'edit': True}, context_instance=RequestContext(request))
+	return render(request, 'rolodex/new_person.html', {'form': form, 'formset': formset, 'personNode': peep, 'primary': primary, 'edit': True})
 
 
 @permission_required('rolodex.delete_person')
@@ -273,7 +273,7 @@ def delete_person(request, person_slug):
 	if request.method == "POST":
 		peep.delete()
 		return redirect('rolodex_home')
-	return render_to_response('rolodex/delete.html', {'peep': peep}, context_instance=RequestContext(request))
+	return render(request, 'rolodex/delete.html', {'peep': peep})
 
 
 @secure
@@ -295,14 +295,14 @@ def search_person(request, person_slug):
 	node.documents = Document.objects.filter(person=node)
 	node.tags = node.tags.all()
 	tags = Tag.objects.all()
-	return render_to_response('rolodex/person.html', {'node': node, 'tags': tags, }, context_instance=RequestContext(request))
+	return render(request, 'rolodex/person.html', {'node': node, 'tags': tags, })
 
 
 @secure
 def person_map(request, person_slug):
 	node = Person.objects.get(slug=person_slug)
 	hops = int(request.GET.get('hops', 3))
-	return render_to_response('rolodex/personMap.html', {'node': node, 'hops': hops}, context_instance=RequestContext(request))
+	return render(request, 'rolodex/personMap.html', {'node': node, 'hops': hops})
 
 
 @secure
@@ -350,7 +350,7 @@ def new_person_relation(request, person_slug):
 				from_ent.add_p2org(to_ent, **{'relation': relation})
 				saved = True
 	peep_node = Person.objects.get(slug=person_slug)
-	return render_to_response('rolodex/new_relation.html', {'peepNode': peep_node, 'pForm': p2p_form, 'orgForm': p2org_form, 'saved': saved}, context_instance=RequestContext(request))
+	return render(request, 'rolodex/new_relation.html', {'peepNode': peep_node, 'pForm': p2p_form, 'orgForm': p2org_form, 'saved': saved})
 
 
 @secure
@@ -366,7 +366,7 @@ def new_person_doc(request, person_slug=None):
 	else:
 		node = Person.objects.get(slug=person_slug)
 		doc_form = DocumentForm(initial={'person': node})
-	return render_to_response('rolodex/new_doc.html', {'node': node, 'entity': 'person', 'docForm': doc_form}, context_instance=RequestContext(request))
+	return render(request, 'rolodex/new_doc.html', {'node': node, 'entity': 'person', 'docForm': doc_form})
 
 
 @secure
@@ -435,7 +435,7 @@ def search_tag(request, tag_name=None):
 	tag['peeps'] = Person.objects.filter(tags__name=tag_name)
 	tag['orgs'] = Org.objects.filter(tags__name=tag_name)
 	tag['all_tags'] = Tag.objects.all()
-	return render_to_response('rolodex/tag_search.html', {'tag': tag, }, context_instance=RequestContext(request))
+	return render(request, 'rolodex/tag_search.html', {'tag': tag, })
 
 #################################################################
 # SELECT SEARCH FUNCTIONS #
@@ -604,7 +604,7 @@ def adv_compile(node, hops):
 
 
 def user_check(user):
-	if user.is_authenticated():
+	if user.is_authenticated:
 		return user.get_username()
 	else:
 		return "AnonymousUser"

@@ -1,12 +1,13 @@
 from django.test import TestCase
 from django.test import Client
-from django.core.urlresolvers import reverse
+from django.urls import reverse
 from rolodex.models import *
 from django_webtest import WebTest
 from rolodex.views import *
 import json
 
 client = Client()
+client.defaults['HTTP_WEBTEST_USER'] = 'webtest'
 
 
 class RolodexModelsTestCase(TestCase):
@@ -16,6 +17,8 @@ class RolodexModelsTestCase(TestCase):
 	fixtures = ['rolodex_models_testdata.json']
 
 	def setUp(self):
+		from rolodex import views as rolodex_views
+		rolodex_views.EMPLOYMENT = P2Org_Type.objects.get(relationship_type='employment')
 		self.o1 = Org.objects.get(slug="acme-corp")
 		self.p1 = Person.objects.get(slug="john-doe")
 		self.o2 = Org.objects.get(slug="ajax-corp")
@@ -73,6 +76,9 @@ class RolodexViewsTestCase(WebTest):
 	fixtures = ['rolodex_views_testdata.json']
 
 	def setUp(self):
+		self.app.extra_environ['HTTP_WEBTEST_USER'] = 'webtest'
+		from rolodex import views as rolodex_views
+		rolodex_views.EMPLOYMENT = P2Org_Type.objects.get(relationship_type='employment')
 		self.o1 = Org.objects.get(slug="acme-corp")
 		self.p1 = Person.objects.get(slug="john-doe")
 		self.o2 = Org.objects.get(slug="ajax-corp")
@@ -248,3 +254,44 @@ Fixtures...
 
 # python manage.py dumpdata rolodex --format=json --indent=4 > testproject/fixtures/rolodex_models_testdata.json
 # python manage.py dumpdata rolodex --format=json --indent=4 > testproject/fixtures/rolodex_views_testdata.json
+
+
+class OrgHierarchyAPITestCase(TestCase):
+
+	def setUp(self):
+		self.parent = Org.objects.create(orgName='Parent Org')
+		self.child = Org.objects.create(orgName='Child Org')
+		self.grandchild = Org.objects.create(orgName='Grandchild Org')
+		self.relation_type = Org2Org_Type.objects.create(relationship_type='ownership')
+		self.parent.add_org2org(self.child, relation=self.relation_type, hierarchy='parent')
+		self.child.add_org2org(self.grandchild, relation=self.relation_type, hierarchy='parent')
+		self.employment = P2Org_Type.objects.create(relationship_type='employment')
+		self.employee = Person.objects.create(firstName='Ella', lastName='Employee')
+		self.child.add_org2p(self.employee, relation=self.employment)
+
+	def test_tree_default_depth(self):
+		url = reverse('rolodex_org_hierarchy', args=[self.parent.slug])
+		response = self.client.get(url)
+		self.assertEqual(response.status_code, 200)
+		payload = response.json()
+		self.assertEqual(payload['slug'], self.parent.slug)
+		self.assertEqual(len(payload['children']), 1)
+		self.assertEqual(payload['children'][0]['slug'], self.child.slug)
+		self.assertEqual(payload['children'][0]['children'][0]['slug'], self.grandchild.slug)
+
+	def test_tree_respects_depth(self):
+		url = f"{reverse('rolodex_org_hierarchy', args=[self.parent.slug])}?depth=1"
+		response = self.client.get(url)
+		self.assertEqual(response.status_code, 200)
+		payload = response.json()
+		self.assertEqual(len(payload['children']), 1)
+		self.assertEqual(payload['children'][0]['children'], [])
+
+	def test_tree_includes_members_and_parents(self):
+		child_url = f"{reverse('rolodex_org_hierarchy', args=[self.child.slug])}?include_members=true&include_parents=true&depth=0"
+		response = self.client.get(child_url)
+		self.assertEqual(response.status_code, 200)
+		payload = response.json()
+		self.assertEqual(payload['member_count'], 1)
+		self.assertEqual(payload['members'][0]['slug'], self.employee.slug)
+		self.assertEqual(payload['parents'][0]['slug'], self.parent.slug)

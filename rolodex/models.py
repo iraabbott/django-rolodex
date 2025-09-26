@@ -1,7 +1,7 @@
 from django.db import models
 from itertools import chain
 from django.core.exceptions import ValidationError
-from django.utils.translation import ugettext as _
+from django.utils.translation import gettext_lazy as _
 from django.core.validators import URLValidator, validate_email
 
 
@@ -35,7 +35,7 @@ class OpenRecordsLaw(models.Model):
 	name = models.CharField(max_length=250)
 	link = models.URLField(blank=True, null=True)
 
-	def __unicode__(self):
+	def __str__(self):
 		return self.name
 
 	def save(self, *args, **kwargs):
@@ -51,7 +51,7 @@ class PersonRole(models.Model):
 	role = models.CharField(max_length=250)
 	description = models.TextField(blank=True, null=True)
 
-	def __unicode__(self):
+	def __str__(self):
 		return self.role
 
 	def save(self, *args, **kwargs):
@@ -67,7 +67,7 @@ class OrgContactRole(models.Model):
 	role = models.CharField(max_length=250)
 	description = models.TextField(blank=True, null=True)
 
-	def __unicode__(self):
+	def __str__(self):
 		return self.role
 
 	def save(self, *args, **kwargs):
@@ -84,7 +84,7 @@ class P2P_Type(models.Model):
 	relationship_type = models.CharField(max_length=250)
 	objects = GetOrNoneManager()
 
-	def __unicode__(self):
+	def __str__(self):
 		return self.relationship_type
 
 	def save(self, *args, **kwargs):
@@ -97,7 +97,7 @@ class Org2Org_Type(models.Model):
 	relationship_type = models.CharField(max_length=250)
 	objects = GetOrNoneManager()
 
-	def __unicode__(self):
+	def __str__(self):
 		return self.relationship_type
 
 	def save(self, *args, **kwargs):
@@ -110,7 +110,7 @@ class P2Org_Type(models.Model):
 	relationship_type = models.CharField(max_length=250)
 	objects = GetOrNoneManager()
 
-	def __unicode__(self):
+	def __str__(self):
 		return self.relationship_type
 
 	def save(self, *args, **kwargs):
@@ -134,8 +134,8 @@ class Document(models.Model):
 	'''
 	General document storage on entities.
 	'''
-	person = models.ForeignKey('Person', blank=True, null=True, editable=True, related_name='person_doc')
-	org = models.ForeignKey('Org', blank=True, null=True, editable=True, related_name='org_doc')
+	person = models.ForeignKey('Person', blank=True, null=True, editable=True, related_name='person_doc', on_delete=models.CASCADE)
+	org = models.ForeignKey('Org', blank=True, null=True, editable=True, related_name='org_doc', on_delete=models.CASCADE)
 	doc = models.FileField(upload_to=upload_doc_directory, blank=True, null=True)
 	link = models.URLField(blank=True, null=True)
 	notes = models.TextField(blank=True, null=True)
@@ -157,12 +157,12 @@ class Contact(models.Model):
 	'''
 	A contact record for persons or orgs.
 	'''
-	person = models.ForeignKey('Person', blank=True, null=True, editable=False, related_name='person_contact')
-	org = models.ForeignKey('Org', blank=True, null=True, editable=False, related_name='org_contact')
+	person = models.ForeignKey('Person', blank=True, null=True, editable=False, related_name='person_contact', on_delete=models.CASCADE)
+	org = models.ForeignKey('Org', blank=True, null=True, editable=False, related_name='org_contact', on_delete=models.CASCADE)
 
 	type = models.CharField(max_length=100, choices=contact_types)
 	contact = models.CharField(max_length=250, blank=True, null=True)
-	role = models.ForeignKey('OrgContactRole', blank=True, null=True)
+	role = models.ForeignKey('OrgContactRole', blank=True, null=True, on_delete=models.SET_NULL)
 	notes = models.TextField(blank=True, null=True)
 
 	def clean(self):
@@ -181,7 +181,7 @@ class Contact(models.Model):
 		else:
 			pass
 
-	def __unicode__(self):
+	def __str__(self):
 		if self.person:
 			return self.person.lastName + ", " + self.person.firstName + ": " + self.type
 		else:
@@ -201,7 +201,7 @@ class Person(models.Model):
 	slug = models.SlugField(unique=True, editable=False)
 	lastName = models.CharField(max_length=100)
 	firstName = models.CharField(max_length=100)
-	role = models.ForeignKey('PersonRole', blank=True, null=True, related_name='person_role')
+	role = models.ForeignKey('PersonRole', blank=True, null=True, related_name='person_role', on_delete=models.SET_NULL)
 	position = models.CharField(max_length=250, blank=True, null=True)
 	department = models.CharField(max_length=250, blank=True, null=True)
 	gender = models.CharField(max_length=250, blank=True, null=True, choices=gender_types)
@@ -219,7 +219,7 @@ class Person(models.Model):
 
 	tags = TaggableManager()
 
-	def __unicode__(self):
+	def __str__(self):
 		return self.lastName + ", " + self.firstName
 
 	def save(self, *args, **kwargs):
@@ -230,7 +230,7 @@ class Person(models.Model):
 class Org(models.Model):
 	slug = models.SlugField(unique=True, editable=False)
 	orgName = models.CharField(max_length=200)
-	openRecordsLaw = models.ForeignKey('OpenRecordsLaw', blank=True, null=True)
+	openRecordsLaw = models.ForeignKey('OpenRecordsLaw', blank=True, null=True, on_delete=models.SET_NULL)
 	# Relationships
 	org_relations = models.ManyToManyField('self', through='Org2Org', symmetrical=False, related_name='+', blank=True)
 	p_relations = models.ManyToManyField('Person', through="Org2P", related_name='orgs', blank=True)
@@ -241,7 +241,7 @@ class Org(models.Model):
 
 	tags = TaggableManager()
 
-	def __unicode__(self):
+	def __str__(self):
 		return self.orgName
 
 	def save(self, *args, **kwargs):
@@ -254,8 +254,8 @@ class Org(models.Model):
 #################
 
 class SearchLog(models.Model):
-	person = models.ForeignKey('Person', blank=True, null=True, editable=False, related_name='person_log')
-	org = models.ForeignKey('Org', blank=True, null=True, editable=False, related_name='org_log')
+	person = models.ForeignKey('Person', blank=True, null=True, editable=False, related_name='person_log', on_delete=models.CASCADE)
+	org = models.ForeignKey('Org', blank=True, null=True, editable=False, related_name='org_log', on_delete=models.CASCADE)
 	user = models.CharField(max_length=250)
 	datestamp = models.DateField(auto_now=True)
 
@@ -271,9 +271,9 @@ class SearchLog(models.Model):
 #################
 
 class P2P(models.Model):
-	from_ent = models.ForeignKey(Person, related_name='p_from_p')
-	to_ent = models.ForeignKey(Person, related_name='p_to_p')
-	relation = models.ForeignKey('P2P_Type', blank=True, null=True, related_name='p2p_relation')
+	from_ent = models.ForeignKey(Person, related_name='p_from_p', on_delete=models.CASCADE)
+	to_ent = models.ForeignKey(Person, related_name='p_to_p', on_delete=models.CASCADE)
+	relation = models.ForeignKey('P2P_Type', blank=True, null=True, related_name='p2p_relation', on_delete=models.SET_NULL)
 	from_date = models.DateField(blank=True, null=True)
 	to_date = models.DateField(blank=True, null=True)
 	description = models.TextField(blank=True, null=True)
@@ -284,7 +284,7 @@ class P2P(models.Model):
 			raise ValidationError(_('That relationship already exists.'), code='already_exists')
 		super(P2P, self).clean()
 
-	def __unicode__(self):
+	def __str__(self):
 		return self.from_ent.lastName + " ... " + self.to_ent.lastName
 	'''
 	Override save and delete methods to maintain relationship symmetry.
@@ -336,16 +336,16 @@ hierarchy_types = (('parent', 'parent'), ('child', 'child'), ('none', 'none'))
 
 
 class Org2Org(models.Model):
-	from_ent = models.ForeignKey(Org, related_name='org_from_org')
-	to_ent = models.ForeignKey(Org, related_name='org_to_org')
-	relation = models.ForeignKey('Org2Org_Type', blank=True, null=True, related_name='org2org_relation')
+	from_ent = models.ForeignKey(Org, related_name='org_from_org', on_delete=models.CASCADE)
+	to_ent = models.ForeignKey(Org, related_name='org_to_org', on_delete=models.CASCADE)
+	relation = models.ForeignKey('Org2Org_Type', blank=True, null=True, related_name='org2org_relation', on_delete=models.SET_NULL)
 	from_date = models.DateField(blank=True, null=True)
 	to_date = models.DateField(blank=True, null=True)
 	description = models.TextField(blank=True, null=True)
 	hierarchy = models.CharField(choices=hierarchy_types, default='none', max_length=10)
 	objects = GetOrNoneManager()
 
-	def __unicode__(self):
+	def __str__(self):
 		return self.from_ent.orgName + " ... " + self.to_ent.orgName
 
 	def clean(self):
@@ -383,15 +383,15 @@ class Org2Org(models.Model):
 
 
 class P2Org(models.Model):
-	from_ent = models.ForeignKey(Person, related_name='org_from_p')
-	to_ent = models.ForeignKey(Org, related_name='p_to_org')
-	relation = models.ForeignKey('P2Org_Type', blank=True, null=True, related_name='p2org_relation')
+	from_ent = models.ForeignKey(Person, related_name='org_from_p', on_delete=models.CASCADE)
+	to_ent = models.ForeignKey(Org, related_name='p_to_org', on_delete=models.CASCADE)
+	relation = models.ForeignKey('P2Org_Type', blank=True, null=True, related_name='p2org_relation', on_delete=models.SET_NULL)
 	from_date = models.DateField(blank=True, null=True)
 	to_date = models.DateField(blank=True, null=True)
 	description = models.TextField(blank=True, null=True)
 	objects = GetOrNoneManager()
 
-	def __unicode__(self):
+	def __str__(self):
 		return self.from_ent.lastName + " ... " + self.to_ent.orgName
 
 	def clean(self):
@@ -425,15 +425,15 @@ class P2Org(models.Model):
 
 
 class Org2P(models.Model):
-	from_ent = models.ForeignKey(Org, related_name='p_from_org')
-	to_ent = models.ForeignKey(Person, related_name='org_to_p')
-	relation = models.ForeignKey('P2Org_Type', blank=True, null=True, related_name='org2p_relation')
+	from_ent = models.ForeignKey(Org, related_name='p_from_org', on_delete=models.CASCADE)
+	to_ent = models.ForeignKey(Person, related_name='org_to_p', on_delete=models.CASCADE)
+	relation = models.ForeignKey('P2Org_Type', blank=True, null=True, related_name='org2p_relation', on_delete=models.SET_NULL)
 	from_date = models.DateField(blank=True, null=True)
 	to_date = models.DateField(blank=True, null=True)
 	description = models.TextField(blank=True, null=True)
 	objects = GetOrNoneManager()
 
-	def __unicode__(self):
+	def __str__(self):
 		return self.from_ent.orgName + " ... " + self.to_ent.lastName
 
 	def clean(self):

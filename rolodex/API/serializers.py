@@ -93,3 +93,106 @@ class Org2PSerializer(serializers.HyperlinkedModelSerializer):
 	class Meta:
 		model = Org2P
 		fields = ('id', 'from_ent', 'to_ent', 'relation', 'from_date', 'to_date', 'description')
+
+
+class OrgHierarchySerializer(serializers.ModelSerializer):
+	relation_type = serializers.SerializerMethodField()
+	hierarchy = serializers.SerializerMethodField()
+	member_count = serializers.SerializerMethodField()
+	members = serializers.SerializerMethodField()
+	children = serializers.SerializerMethodField()
+	parents = serializers.SerializerMethodField()
+
+	class Meta:
+		model = Org
+		fields = (
+			'id',
+			'slug',
+			'orgName',
+			'relation_type',
+			'hierarchy',
+			'member_count',
+			'members',
+			'children',
+			'parents',
+		)
+
+	def _edge(self):
+		return self.context.get('edge')
+
+	def _employees(self, obj):
+		cache = self.context.setdefault('_employees_cache', {})
+		if obj.pk not in cache:
+			cache[obj.pk] = list(obj.get_employees())
+		return cache[obj.pk]
+
+	def get_relation_type(self, obj):
+		edge = self._edge()
+		if edge and edge.relation:
+			return edge.relation.relationship_type
+		return None
+
+	def get_hierarchy(self, obj):
+		edge = self._edge()
+		if edge:
+			if edge.hierarchy == 'parent':
+				return 'child'
+			if edge.hierarchy == 'child':
+				return 'parent'
+			return edge.hierarchy
+		return None
+
+	def get_member_count(self, obj):
+		return len(self._employees(obj))
+
+	def get_members(self, obj):
+		if not self.context.get('include_members'):
+			return []
+		members = []
+		for person in self._employees(obj):
+			members.append({
+				'id': person.id,
+				'slug': person.slug,
+				'firstName': person.firstName,
+				'lastName': person.lastName,
+				'role': person.role.role if person.role else None,
+			})
+		return members
+
+	def get_children(self, obj):
+		direction = self.context.get('direction', 'down')
+		if direction not in ('down', 'both'):
+			return []
+		depth = self.context.get('depth', 0)
+		if depth <= 0:
+			return []
+		visited = self.context.get('visited') or set()
+		children = []
+		edges = obj.org_from_org.filter(hierarchy='parent').select_related('to_ent', 'relation').order_by('to_ent__orgName')
+		for edge in edges:
+			child = edge.to_ent
+			if child.pk in visited:
+				continue
+			child_context = dict(self.context)
+			child_context['depth'] = depth - 1
+			child_context['edge'] = edge
+			child_context['visited'] = set(visited) | {child.pk}
+			serializer = OrgHierarchySerializer(child, context=child_context)
+			children.append(serializer.data)
+		return children
+
+	def get_parents(self, obj):
+		if not self.context.get('include_parents'):
+			return []
+		edges = obj.org_from_org.filter(hierarchy='child').select_related('to_ent', 'relation').order_by('to_ent__orgName')
+		parents = []
+		for edge in edges:
+			parent = edge.to_ent
+			parents.append({
+				'id': parent.id,
+				'slug': parent.slug,
+				'orgName': parent.orgName,
+				'hierarchy': 'parent',
+				'relation_type': edge.relation.relationship_type if edge.relation else None,
+			})
+		return parents
